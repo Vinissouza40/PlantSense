@@ -11,14 +11,14 @@ https://www.tldraw.com/f/4Ac_cOc2QJAMJ0gpoT5GK?d=v-482.-487.4243.2416.page
 **Monitoramento Bioelétrico de Plantas**
 
 ##  Objetivo
-Criar um sistema que monitora sinais elétricos e variações da planta para identificar estresse hídrico, pragas e mudanças no metabolismo.
+Criar um aplicativo que monitora sinais elétricos e variações da planta para identificar estresse hídrico, pragas e mudanças no metabolismo.
 
 ---
 
 ## a)  Ferramentas que serão usadas
 
 ### Hardware
-- **ESP32** (microcontrolador principal)
+- **ESP32** (microcontrolador principal)(Lorawan)
 - **ADS1115** (conversor ADC 16 bits)
 - **INA333 ou AD620** (amplificador de sinal)
 - **AD5933** (bioimpedância)
@@ -30,6 +30,9 @@ Criar um sistema que monitora sinais elétricos e variações da planta para ide
 ### Software
 - Arduino IDE
 - SQLServer
+- Postgree
+- Google Firebase
+- MQTT
 
 ---
 
@@ -51,9 +54,11 @@ Exemplo:
 ```
 ---
 
-## c) Tecnologia/Linguagem para API
+## c) Tecnologia/Linguagem para API e APP
+- FLUTTER
 - C#
 - .NET
+- C
 
 ---
 
@@ -62,3 +67,39 @@ Exemplo:
 - Suporta ESP32
 - Melhor para simular projetos IoT
 
+
+Edge Computing
+
+1️ - Filtragem
+
+Mediana
+
+Média móvel
+
+Remover ruído
+
+2️-Rejeição de leitura ruim
+
+Se acelerômetro detectar vento → descarta leitura
+
+Se valor saturar → ignora
+
+3️- Extração de feature
+
+Em vez de enviar 64 amostras cruas:
+
+Ele envia:
+
+Valor médio
+
+Variação percentual
+
+Tendência
+
+Isso reduz:
+
+Tráfego
+
+Consumo de energia
+
+Dependência da nuvem
