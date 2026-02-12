@@ -1,3 +1,11 @@
+
+#TLDRAW
+
+https://www.tldraw.com/f/4Ac_cOc2QJAMJ0gpoT5GK?d=v-482.-487.4243.2416.page
+
+
+![Modelagem](https://github.com/user-attachments/assets/5c4c9b06-4c1e-4493-80f0-e348af73f202)
+
 # PlantSense
 
 **Monitoramento Bioelétrico de Plantas**
