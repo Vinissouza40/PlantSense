@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "352473030604",
+    "firebase_url": "https://plantsense-9b85f-default-rtdb.firebaseio.com",
+    "project_id": "plantsense-9b85f",
+    "storage_bucket": "plantsense-9b85f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:352473030604:android:713c965540fbf749ff4769",
+        "android_client_info": {
+          "package_name": "com.example.plant_sense"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "352473030604-n8jjj3q97dknqk333q2bg084j9mbqpmq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAykkBnnsoLO0fgOVvjtkruej9K2GPtcgo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "352473030604-n8jjj3q97dknqk333q2bg084j9mbqpmq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "352473030604-uf4almoqjdpmto6meamebaqlpfvncgo2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.plantSense"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
