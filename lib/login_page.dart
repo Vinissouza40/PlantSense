@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import 'cadastro_page.dart';
 import 'home_page.dart';
 import 'esqueci_senha_page.dart';
@@ -12,79 +14,173 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final emailController = TextEditingController();
   final senhaController = TextEditingController();
 
-  final supabase = Supabase.instance.client;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   bool mostrarSenha = false;
+  bool carregando = false;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    senhaController.dispose();
+    super.dispose();
+  }
+
+  // ================= LOGIN EMAIL/SENHA =================
 
   Future<void> login() async {
+    if (emailController.text.trim().isEmpty ||
+        senhaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Preencha email e senha"),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      carregando = true;
+    });
 
     try {
-
-      final response = await supabase.auth.signInWithPassword(
+      final userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: senhaController.text.trim(),
       );
 
-      if (response.user != null) {
-
+      if (userCredential.user != null) {
         if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Login realizado com sucesso"),
-          ),
-        );
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const HomePage(),
+            builder: (_) => const HomePage(),
           ),
         );
+      }
+    } on FirebaseAuthException catch (e) {
+      String mensagem = "Erro ao fazer login";
 
+      switch (e.code) {
+        case 'user-not-found':
+          mensagem = "Usuário não encontrado";
+          break;
+
+        case 'wrong-password':
+          mensagem = "Senha incorreta";
+          break;
+
+        case 'invalid-email':
+          mensagem = "Email inválido";
+          break;
+
+        case 'invalid-credential':
+          mensagem = "Email ou senha incorretos";
+          break;
       }
 
-    } catch (e) {
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Erro: $e"),
-        ),
+        SnackBar(content: Text(mensagem)),
       );
-
+    } finally {
+      if (mounted) {
+        setState(() {
+          carregando = false;
+        });
+      }
     }
-
   }
 
-  void abrirCadastro() {
+  // ================= LOGIN GOOGLE =================
 
+  Future<void> loginComGoogle() async {
+    try {
+      setState(() {
+        carregando = true;
+      });
+
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      final GoogleSignInAccount? googleUser =
+          await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        setState(() {
+          carregando = false;
+        });
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential =
+          GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await _auth.signInWithCredential(
+        credential,
+      );
+
+      if (userCredential.user != null) {
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const HomePage(),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Erro ao fazer login com Google: $e",
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          carregando = false;
+        });
+      }
+    }
+  }
+
+  // ================= NAVEGAÇÃO =================
+
+  void abrirCadastro() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CadastroPage(),
+        builder: (_) => const CadastroPage(),
       ),
     );
-
   }
 
   void abrirRecuperarSenha() {
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const EsqueciSenhaPage(),
+        builder: (_) => const EsqueciSenhaPage(),
       ),
     );
-
   }
+
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       resizeToAvoidBottomInset: true,
 
@@ -102,7 +198,6 @@ class _LoginPageState extends State<LoginPage> {
 
         child: LayoutBuilder(
           builder: (context, constraints) {
-
             double largura;
 
             if (constraints.maxWidth < 600) {
@@ -121,7 +216,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 child: IntrinsicHeight(
                   child: Center(
-
                     child: SizedBox(
                       width: largura,
 
@@ -129,51 +223,74 @@ class _LoginPageState extends State<LoginPage> {
                         padding: const EdgeInsets.all(25),
 
                         child: Card(
-                          elevation: 10,
+                          elevation: 12,
 
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(20),
                           ),
 
                           child: Padding(
-                            padding: const EdgeInsets.all(25),
+                            padding:
+                                const EdgeInsets.all(25),
 
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
 
+                              children: [
                                 Image.asset(
                                   'assets/plantsense_logo.png',
-                                  width: 100,
+                                  width: 110,
                                 ),
 
                                 const SizedBox(height: 15),
 
                                 const Text(
-                                  "Login",
+                                  "PlantSense",
                                   style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2E8B57),
+                                    fontSize: 28,
+                                    fontWeight:
+                                        FontWeight.bold,
+                                    color:
+                                        Color(0xFF2E8B57),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 5),
+
+                                const Text(
+                                  "Monitoramento Inteligente",
+                                  style: TextStyle(
+                                    color: Colors.grey,
                                   ),
                                 ),
 
                                 const SizedBox(height: 30),
 
                                 TextField(
-                                  controller: emailController,
-                                  keyboardType: TextInputType.emailAddress,
+                                  controller:
+                                      emailController,
+                                  keyboardType:
+                                      TextInputType
+                                          .emailAddress,
 
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(
+                                  decoration:
+                                      InputDecoration(
+                                    prefixIcon:
+                                        const Icon(
                                       Icons.email,
-                                      color: Color(0xFF2E8B57),
+                                      color:
+                                          Color(0xFF2E8B57),
                                     ),
+                                    labelText:
+                                        "Email",
 
-                                    labelText: "Email",
-
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius
+                                              .circular(
+                                                  12),
                                     ),
                                   ),
                                 ),
@@ -181,34 +298,50 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 20),
 
                                 TextField(
-                                  controller: senhaController,
-                                  obscureText: !mostrarSenha,
+                                  controller:
+                                      senhaController,
+                                  obscureText:
+                                      !mostrarSenha,
 
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(
+                                  decoration:
+                                      InputDecoration(
+                                    prefixIcon:
+                                        const Icon(
                                       Icons.lock,
-                                      color: Color(0xFF2E8B57),
+                                      color:
+                                          Color(0xFF2E8B57),
                                     ),
 
-                                    labelText: "Senha",
+                                    labelText:
+                                        "Senha",
 
-                                    suffixIcon: IconButton(
+                                    suffixIcon:
+                                        IconButton(
                                       icon: Icon(
                                         mostrarSenha
-                                            ? Icons.visibility
-                                            : Icons.visibility_off,
-                                        color: const Color(0xFF2E8B57),
+                                            ? Icons
+                                                .visibility
+                                            : Icons
+                                                .visibility_off,
+                                        color:
+                                            const Color(
+                                          0xFF2E8B57,
+                                        ),
                                       ),
-
                                       onPressed: () {
                                         setState(() {
-                                          mostrarSenha = !mostrarSenha;
+                                          mostrarSenha =
+                                              !mostrarSenha;
                                         });
                                       },
                                     ),
 
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius
+                                              .circular(
+                                                  12),
                                     ),
                                   ),
                                 ),
@@ -217,25 +350,113 @@ class _LoginPageState extends State<LoginPage> {
 
                                 SizedBox(
                                   width: double.infinity,
+                                  height: 55,
 
                                   child: ElevatedButton(
-                                    onPressed: login,
+                                    onPressed:
+                                        carregando
+                                            ? null
+                                            : login,
 
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2E8B57),
-                                      padding: const EdgeInsets.symmetric(vertical: 15),
+                                    style:
+                                        ElevatedButton
+                                            .styleFrom(
+                                      backgroundColor:
+                                          const Color(
+                                        0xFF2E8B57,
+                                      ),
 
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                      shape:
+                                          RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(
+                                                    12),
                                       ),
                                     ),
 
-                                    child: const Text(
-                                      "Entrar",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.white,
+                                    child: carregando
+                                        ? const CircularProgressIndicator(
+                                            color:
+                                                Colors
+                                                    .white,
+                                          )
+                                        : const Text(
+                                            "Entrar",
+                                            style:
+                                                TextStyle(
+                                              fontSize:
+                                                  18,
+                                              color: Colors
+                                                  .white,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 15),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 55,
+
+                                  child: OutlinedButton(
+                                    onPressed:
+                                        carregando
+                                            ? null
+                                            : loginComGoogle,
+
+                                    style:
+                                        OutlinedButton
+                                            .styleFrom(
+                                      backgroundColor:
+                                          Colors.white,
+
+                                      side:
+                                          const BorderSide(
+                                        color: Color(
+                                          0xFFE5E7EB,
+                                        ),
                                       ),
+
+                                      shape:
+                                          RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(
+                                                    12),
+                                      ),
+                                    ),
+
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment
+                                              .center,
+
+                                      children: [
+                                        Image.asset(
+                                          'assets/google_g.png',
+                                          width: 22,
+                                          height: 22,
+                                        ),
+
+                                        const SizedBox(
+                                            width: 12),
+
+                                        const Text(
+                                          "Entrar com Google",
+                                          style:
+                                              TextStyle(
+                                            fontSize:
+                                                16,
+                                            fontWeight:
+                                                FontWeight
+                                                    .w600,
+                                            color: Colors
+                                                .black87,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -243,26 +464,34 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 10),
 
                                 TextButton(
-                                  onPressed: abrirRecuperarSenha,
+                                  onPressed:
+                                      abrirRecuperarSenha,
+
                                   child: const Text(
                                     "Esqueceu a senha?",
                                     style: TextStyle(
-                                      color: Color(0xFF2E8B57),
+                                      color: Color(
+                                        0xFF2E8B57,
+                                      ),
                                     ),
                                   ),
                                 ),
 
                                 TextButton(
-                                  onPressed: abrirCadastro,
+                                  onPressed:
+                                      abrirCadastro,
+
                                   child: const Text(
                                     "Criar conta",
                                     style: TextStyle(
-                                      color: Color(0xFF2E8B57),
-                                      fontWeight: FontWeight.bold,
+                                      color: Color(
+                                        0xFF2E8B57,
+                                      ),
+                                      fontWeight:
+                                          FontWeight.bold,
                                     ),
                                   ),
                                 ),
-
                               ],
                             ),
                           ),
@@ -273,7 +502,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             );
-
           },
         ),
       ),

@@ -1,6 +1,8 @@
+
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'perfil_page.dart';
 import 'login_page.dart';
 
@@ -13,376 +15,171 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
-  final supabase = Supabase.instance.client;
+  final DatabaseReference database = FirebaseDatabase.instance.ref(
+    "plants/PLANT_001/last_reading",
+  );
 
-  List dados = [];
-  RealtimeChannel? channel;
+  String temp = "--";
+  String hum = "--";
+  String solo = "--";
+  String vpd = "--";
 
-  Future<void> carregarDados() async {
+  String status = "--";
+  String prioridade = "--";
+  String zone = "--";
 
-    final response = await supabase
-        .from('sensor_readings')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(20);
+  String rssi = "--";
+  String snr = "--";
 
-    setState(() {
-      dados = response;
-    });
-  }
+  String mlLabel = "--";
+  String mlScore = "--";
 
-  void escutarSensores() {
-
-    channel = supabase.channel('sensor_changes');
-
-    channel!
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'sensor_readings',
-          callback: (payload) {
-
-            setState(() {
-
-              dados.insert(0, payload.newRecord);
-
-              if (dados.length > 20) {
-                dados.removeLast();
-              }
-
-            });
-
-          },
-        )
-        .subscribe();
-  }
-
-  Future<void> logout() async {
-
-    await supabase.auth.signOut();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
-    );
-  }
-
-  Future<void> confirmarLogout() async {
-
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-
-        return AlertDialog(
-
-          backgroundColor: const Color(0xFF111827),
-
-          title: const Text(
-            "Sair",
-            style: TextStyle(color: Colors.white),
-          ),
-
-          content: const Text(
-            "Tem certeza que deseja sair?",
-            style: TextStyle(color: Colors.white70),
-          ),
-
-          actions: [
-
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
-              child: const Text(
-                "Cancelar",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E8B57),
-              ),
-
-              child: const Text(
-                "Sair",
-                style: TextStyle(color: Colors.white),
-              ),
-            )
-
-          ],
-        );
-
-      },
-    );
-
-    if (confirmar == true) {
-      logout();
-    }
-  }
+  String timestamp = "--";
 
   @override
   void initState() {
     super.initState();
-    carregarDados();
-    escutarSensores();
+    ouvirDados();
   }
 
-  @override
-  void dispose() {
+  void ouvirDados() {
+    database.onValue.listen((DatabaseEvent event) {
+      final data = event.snapshot.value;
 
-    if (channel != null) {
-      supabase.removeChannel(channel!);
+      if (data != null) {
+        final record = Map<dynamic, dynamic>.from(data as Map);
+
+        setState(() {
+          temp = record['temp']?.toString() ?? "--";
+          hum = record['hum']?.toString() ?? "--";
+          solo = record['solo']?.toString() ?? "--";
+          vpd = record['vpd']?.toString() ?? "--";
+
+          status = record['status']?.toString() ?? "--";
+          prioridade = record['prioridade']?.toString() ?? "--";
+          zone = record['zone']?.toString() ?? "--";
+
+          rssi = record['rssi']?.toString() ?? "--";
+          snr = record['snr']?.toString() ?? "--";
+
+          mlLabel = record['ml_label']?.toString() ?? "--";
+          mlScore = record['ml_score']?.toString() ?? "--";
+
+          timestamp = record['timestamp']?.toString() ?? "--";
+        });
+      }
+    });
+  }
+
+  Future<void> logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LoginPage(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao sair: $e')),
+      );
     }
-
-    super.dispose();
   }
 
-  Color corTemperatura(double temp) {
+  Future<void> confirmarLogout() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF111827),
+          title: const Text("Sair", style: TextStyle(color: Colors.white)),
+          content: const Text(
+            "Deseja realmente sair?",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancelar",
+                  style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57),
+              ),
+              child: const Text("Sair", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
 
-    if (temp < 20) {
-      return Colors.blue;
-    } else if (temp < 30) {
-      return Colors.orange;
-    } else {
-      return Colors.red;
+    if (confirmar == true) {
+      await logout();
     }
-
   }
 
-  Widget sensorCard(String titulo, String valor, IconData icon, Color cor) {
-
+  Widget infoCard(
+      String titulo, String valor, IconData icone, Color cor) {
     return Container(
-      padding: const EdgeInsets.all(20),
-
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(20),
       ),
-
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-
-          Icon(icon, color: cor, size: 30),
-
+          Icon(icone, color: cor, size: 32),
           const SizedBox(height: 10),
-
-          Text(
-            titulo,
-            style: const TextStyle(color: Colors.white70),
-          ),
-
+          Text(titulo,
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center),
           const SizedBox(height: 5),
-
-          Text(
-            valor,
-            style: TextStyle(
-              color: cor,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          )
-
+          Text(valor,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: cor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget graficoTemperatura() {
-
-    List<FlSpot> pontos = [];
-
-    for (int i = 0; i < dados.length; i++) {
-
-      pontos.add(
-        FlSpot(
-          i.toDouble(),
-          (dados[i]['temperatura'] as num).toDouble(),
-        ),
-      );
+  Color getStatusColor() {
+    if (status.toLowerCase().contains("stress")) {
+      return Colors.red;
     }
-
-    double tempAtual = (dados.first['temperatura'] as num).toDouble();
-
-    return SizedBox(
-      height: 250,
-      child: LineChart(
-
-        LineChartData(
-
-          gridData: FlGridData(
-            show: true,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.white24,
-                strokeWidth: 1,
-              );
-            },
-          ),
-
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(color: Colors.white),
-          ),
-
-          titlesData: FlTitlesData(
-
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  );
-                },
-              ),
-            ),
-
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  );
-                },
-              ),
-            ),
-
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-
-          lineBarsData: [
-
-            LineChartBarData(
-              spots: pontos,
-              isCurved: true,
-              color: corTemperatura(tempAtual),
-              barWidth: 4,
-              dotData: FlDotData(show: false),
-            ),
-
-          ],
-        ),
-
-      ),
-    );
+    return Colors.green;
   }
 
-  Widget graficoUmidade() {
-
-    List<FlSpot> pontos = [];
-
-    for (int i = 0; i < dados.length; i++) {
-
-      pontos.add(
-        FlSpot(
-          i.toDouble(),
-          (dados[i]['umidade'] as num).toDouble(),
-        ),
-      );
+  Color getPriorityColor() {
+    switch (prioridade.toLowerCase()) {
+      case "alta":
+        return Colors.red;
+      case "media":
+        return Colors.orange;
+      case "baixa":
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
-
-    return SizedBox(
-      height: 250,
-      child: LineChart(
-
-        LineChartData(
-
-          gridData: FlGridData(
-            show: true,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.white24,
-                strokeWidth: 1,
-              );
-            },
-          ),
-
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(color: Colors.white),
-          ),
-
-          titlesData: FlTitlesData(
-
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  );
-                },
-              ),
-            ),
-
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  );
-                },
-              ),
-            ),
-
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-
-          lineBarsData: [
-
-            LineChartBarData(
-              spots: pontos,
-              isCurved: true,
-              color: Colors.blue,
-              barWidth: 4,
-              dotData: FlDotData(show: false),
-            ),
-
-          ],
-        ),
-
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-
-    if (dados.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    double score = (double.tryParse(mlScore) ?? 0) * 100;
 
     return Scaffold(
-
       backgroundColor: const Color(0xFF020617),
 
       appBar: AppBar(
@@ -390,10 +187,8 @@ class _HomePageState extends State<HomePage> {
           "PlantSense 🌱",
           style: TextStyle(color: Colors.white),
         ),
-
         backgroundColor: Colors.transparent,
         elevation: 0,
-
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -406,156 +201,192 @@ class _HomePageState extends State<HomePage> {
         ),
 
         actions: [
+          FutureBuilder<DataSnapshot>(
+            future: FirebaseDatabase.instance
+                .ref()
+                .child("usuarios")
+                .child(FirebaseAuth.instance.currentUser!.uid)
+                .child("fotoPerfil")
+                .get(),
+            builder: (context, snapshot) {
+              String url = "";
 
-          PopupMenuButton<String>(
+              if (snapshot.connectionState == ConnectionState.done &&
+                  snapshot.hasData &&
+                  snapshot.data!.value != null) {
+                url = snapshot.data!.value.toString();
+              }
 
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-
-            onSelected: (value) {
-
-              if (value == 'perfil') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PerfilPage(),
+              return Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white,
+                    backgroundImage:
+                        url.isNotEmpty ? NetworkImage(url) : null,
+                    child: url.isEmpty
+                        ? const Icon(Icons.person, color: Colors.black)
+                        : null,
                   ),
-                );
-              }
 
-              if (value == 'logout') {
-                confirmarLogout();
-              }
+                  PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: Colors.white,
+                    ),
+                    onSelected: (value) {
+                      if (value == 'perfil') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PerfilPage(),
+                          ),
+                        );
+                      }
 
+                      if (value == 'logout') {
+                        confirmarLogout();
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'perfil',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person),
+                            SizedBox(width: 10),
+                            Text("Perfil"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout),
+                            SizedBox(width: 10),
+                            Text("Sair"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
             },
-
-            itemBuilder: (context) => [
-
-              const PopupMenuItem(
-                value: 'perfil',
-                child: Row(
-                  children: [
-                    Icon(Icons.person),
-                    SizedBox(width: 10),
-                    Text("Perfil"),
-                  ],
-                ),
-              ),
-
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout),
-                    SizedBox(width: 10),
-                    Text("Sair"),
-                  ],
-                ),
-              ),
-
-            ],
-          )
-
+          ),
         ],
       ),
 
       body: LayoutBuilder(
         builder: (context, constraints) {
+          int crossAxisCount;
 
-          bool celular = constraints.maxWidth < 700;
-
-          if (celular) {
-
-            return Padding(
-              padding: const EdgeInsets.all(20),
-
-              child: ListView(
-                children: [
-
-                  sensorCard(
-                    "Temperatura",
-                    "${dados.first['temperatura']} °C",
-                    Icons.thermostat,
-                    corTemperatura((dados.first['temperatura'] as num).toDouble()),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  graficoTemperatura(),
-
-                  const SizedBox(height: 30),
-
-                  sensorCard(
-                    "Umidade",
-                    "${dados.first['umidade']} %",
-                    Icons.water_drop,
-                    Colors.blue,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  graficoUmidade(),
-
-                ],
-              ),
-            );
-
+          if (constraints.maxWidth < 600) {
+            crossAxisCount = 2;
+          } else if (constraints.maxWidth < 1000) {
+            crossAxisCount = 3;
           } else {
-
-            return Padding(
-              padding: const EdgeInsets.all(20),
-
-              child: Row(
-                children: [
-
-                  Expanded(
-                    child: Column(
-                      children: [
-
-                        sensorCard(
-                          "Temperatura",
-                          "${dados.first['temperatura']} °C",
-                          Icons.thermostat,
-                          corTemperatura((dados.first['temperatura'] as num).toDouble()),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        graficoTemperatura(),
-
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 20),
-
-                  Expanded(
-                    child: Column(
-                      children: [
-
-                        sensorCard(
-                          "Umidade",
-                          "${dados.first['umidade']} %",
-                          Icons.water_drop,
-                          Colors.blue,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        graficoUmidade(),
-
-                      ],
-                    ),
-                  ),
-
-                ],
-              ),
-            );
-
+            crossAxisCount = 4;
           }
 
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+                      gradient: LinearGradient(
+                        colors: [
+                          getStatusColor(),
+                          getStatusColor().withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.eco,
+                            color: Colors.white, size: 60),
+                        const SizedBox(height: 10),
+                        const Text("PLANT_001",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(status,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Chip(
+                          label: Text(
+                              "Prioridade: ${prioridade.toUpperCase()}"),
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(height: 10),
+                        Text("IA: $mlLabel",
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 18)),
+                        Text(
+                          "Confiança: ${score.toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                    children: [
+                      infoCard("Temperatura", "$temp °C",
+                          Icons.thermostat, Colors.orange),
+                      infoCard("Umidade Ar", "$hum %",
+                          Icons.water_drop, Colors.blue),
+                      infoCard("Umidade Solo", "$solo %",
+                          Icons.grass, Colors.green),
+                      infoCard("VPD", vpd,
+                          Icons.analytics, Colors.purple),
+                      infoCard("Zona", zone,
+                          Icons.location_on, Colors.cyan),
+                      infoCard("RSSI", "$rssi dBm",
+                          Icons.wifi, Colors.teal),
+                      infoCard("SNR", "$snr dB",
+                          Icons.network_check, Colors.lightGreen),
+                      infoCard("Status", status,
+                          Icons.health_and_safety,
+                          getStatusColor()),
+                      infoCard("Prioridade", prioridade,
+                          Icons.priority_high,
+                          getPriorityColor()),
+                      infoCard("IA Detectou", mlLabel,
+                          Icons.psychology, Colors.amber),
+                      infoCard("Confiança IA",
+                          "${score.toStringAsFixed(0)}%",
+                          Icons.auto_graph,
+                          Colors.deepPurple),
+                      infoCard("Última Leitura", timestamp,
+                          Icons.access_time, Colors.white),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
         },
       ),
-
     );
   }
 }

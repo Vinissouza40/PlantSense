@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class CadastroPage extends StatefulWidget {
   const CadastroPage({super.key});
@@ -9,8 +10,6 @@ class CadastroPage extends StatefulWidget {
 }
 
 class _CadastroPageState extends State<CadastroPage> {
-
-  final supabase = Supabase.instance.client;
 
   final nomeController = TextEditingController();
   final emailController = TextEditingController();
@@ -27,13 +26,28 @@ class _CadastroPageState extends State<CadastroPage> {
 
     try {
 
-      await supabase.auth.signUp(
+      // 🔐 Criar usuário no Firebase Auth
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: senhaController.text.trim(),
-        data: {
-          'nome': nomeController.text.trim()
-        }
       );
+
+      final user = userCredential.user;
+
+      // 🗂️ Salvar dados no Realtime Database
+      if (user != null) {
+        final dbRef = FirebaseDatabase.instance.ref();
+
+        await dbRef.child("usuarios").child(user.uid).set({
+          'nome': nomeController.text.trim(),
+          'email': emailController.text.trim(),
+          'criadoEm': DateTime.now().toIso8601String(),
+        });
+
+        // (Opcional) salvar nome no perfil do usuário
+        await user.updateDisplayName(nomeController.text.trim());
+      }
 
       if (!mounted) return;
 
@@ -44,6 +58,24 @@ class _CadastroPageState extends State<CadastroPage> {
       );
 
       Navigator.pop(context);
+
+    } on FirebaseAuthException catch (e) {
+
+      String erro = "Erro ao cadastrar";
+
+      if (e.code == 'email-already-in-use') {
+        erro = "Email já está em uso";
+      } else if (e.code == 'weak-password') {
+        erro = "Senha muito fraca";
+      } else if (e.code == 'invalid-email') {
+        erro = "Email inválido";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(erro),
+        ),
+      );
 
     } catch (e) {
 
@@ -160,15 +192,14 @@ class _CadastroPageState extends State<CadastroPage> {
 
                                 TextField(
                                   controller: nomeController,
-
+                                  textCapitalization: TextCapitalization.words,
+                                  autofillHints: const [AutofillHints.name],
                                   decoration: InputDecoration(
                                     prefixIcon: const Icon(
                                       Icons.person,
                                       color: Color(0xFF2E8B57),
                                     ),
-
                                     labelText: "Nome",
-
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -181,15 +212,12 @@ class _CadastroPageState extends State<CadastroPage> {
                                   controller: emailController,
                                   keyboardType: TextInputType.emailAddress,
                                   autofillHints: const [AutofillHints.email],
-
                                   decoration: InputDecoration(
                                     prefixIcon: const Icon(
                                       Icons.email,
                                       color: Color(0xFF2E8B57),
                                     ),
-
                                     labelText: "Email",
-
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -201,15 +229,12 @@ class _CadastroPageState extends State<CadastroPage> {
                                 TextField(
                                   controller: senhaController,
                                   obscureText: !mostrarSenha,
-
                                   decoration: InputDecoration(
                                     prefixIcon: const Icon(
                                       Icons.lock,
                                       color: Color(0xFF2E8B57),
                                     ),
-
                                     labelText: "Senha",
-
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         mostrarSenha
@@ -217,14 +242,12 @@ class _CadastroPageState extends State<CadastroPage> {
                                             : Icons.visibility_off,
                                         color: const Color(0xFF2E8B57),
                                       ),
-
                                       onPressed: () {
                                         setState(() {
                                           mostrarSenha = !mostrarSenha;
                                         });
                                       },
                                     ),
-
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -235,20 +258,15 @@ class _CadastroPageState extends State<CadastroPage> {
 
                                 SizedBox(
                                   width: double.infinity,
-
                                   child: ElevatedButton(
-
                                     onPressed: carregando ? null : cadastrar,
-
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF2E8B57),
                                       padding: const EdgeInsets.symmetric(vertical: 15),
-
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
-
                                     child: carregando
                                         ? const CircularProgressIndicator(
                                             color: Colors.white,

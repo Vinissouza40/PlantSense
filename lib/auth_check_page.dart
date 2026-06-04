@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'home_page.dart';
 import 'login_page.dart';
@@ -9,14 +9,29 @@ class AuthCheckPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
 
-    final session = Supabase.instance.client.auth.currentSession;
+      builder: (context, snapshot) {
 
-    if (session != null) {
-      return const HomePage();
-    } else {
-      return const LoginPage();
-    }
+        // Carregando verificação da sessão
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
+        // Usuário autenticado
+        if (snapshot.hasData) {
+          return const HomePage();
+        }
+
+        // Usuário não autenticado
+        return const LoginPage();
+      },
+    );
   }
 }
