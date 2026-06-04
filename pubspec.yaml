@@ -24,6 +24,8 @@ dependencies:
   fl_chart: ^0.66.0
   mqtt_client: ^10.0.0
   cloud_firestore: ^4.17.5
+  font_awesome_flutter: ^10.8.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

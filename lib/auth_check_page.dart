@@ -9,12 +9,29 @@ class AuthCheckPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
 
-    if (user != null) {
-      return const HomePage();
-    } else {
-      return const LoginPage();
-    }
+      builder: (context, snapshot) {
+
+        // Carregando verificação da sessão
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // Usuário autenticado
+        if (snapshot.hasData) {
+          return const HomePage();
+        }
+
+        // Usuário não autenticado
+        return const LoginPage();
+      },
+    );
   }
 }
