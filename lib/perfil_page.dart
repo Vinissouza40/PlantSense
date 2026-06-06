@@ -32,39 +32,75 @@ class _PerfilPageState extends State<PerfilPage> {
   }
 
   Future<void> carregarDados() async {
-    if (user == null) return;
-
-    try {
-      final snapshot = await FirebaseDatabase.instance
-          .ref()
-          .child("usuarios")
-          .child(user!.uid)
-          .get();
-
-      if (snapshot.exists) {
-        final dados = Map<String, dynamic>.from(snapshot.value as Map);
-
-        setState(() {
-          nome = dados["nome"] ?? "Usuário";
-          email = dados["email"] ?? user!.email ?? "";
-          telefone = dados["telefone"] ?? "--";
-          fotoUrl = dados["fotoPerfil"] ?? "";
-          carregando = false;
-        });
-      } else {
-        setState(() {
-          nome = user!.displayName ?? "Usuário";
-          email = user!.email ?? "";
-          carregando = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        carregando = false;
-      });
-    }
+  if (user == null) {
+    setState(() {
+      carregando = false;
+    });
+    return;
   }
 
+  try {
+    print("UID: ${user!.uid}");
+    print("Nome Google: ${user!.displayName}");
+    print("Email Google: ${user!.email}");
+    print("Foto Google: ${user!.photoURL}");
+
+    final snapshot = await FirebaseDatabase.instance
+        .ref("usuarios/${user!.uid}")
+        .get();
+
+    if (snapshot.exists && snapshot.value != null) {
+      final dados = Map<String, dynamic>.from(snapshot.value as Map);
+
+      setState(() {
+        nome = dados["nome"]?.toString().isNotEmpty == true
+            ? dados["nome"].toString()
+            : (user!.displayName ?? "Usuário");
+
+        email = dados["email"]?.toString().isNotEmpty == true
+            ? dados["email"].toString()
+            : (user!.email ?? "");
+
+        telefone = dados["telefone"]?.toString().isNotEmpty == true
+            ? dados["telefone"].toString()
+            : "--";
+
+        fotoUrl = dados["fotoPerfil"]?.toString().isNotEmpty == true
+            ? dados["fotoPerfil"].toString()
+            : (user!.photoURL ?? "");
+
+        carregando = false;
+      });
+    } else {
+      setState(() {
+        nome = user!.displayName ?? "Usuário";
+        email = user!.email ?? "";
+        telefone = "--";
+        fotoUrl = user!.photoURL ?? "";
+        carregando = false;
+      });
+
+      await FirebaseDatabase.instance
+          .ref("usuarios/${user!.uid}")
+          .set({
+        "nome": user!.displayName ?? "Usuário",
+        "email": user!.email ?? "",
+        "telefone": "",
+        "fotoPerfil": user!.photoURL ?? "",
+      });
+    }
+  } catch (e) {
+    print("Erro ao carregar perfil: $e");
+
+    setState(() {
+      nome = user!.displayName ?? "Usuário";
+      email = user!.email ?? "";
+      telefone = "--";
+      fotoUrl = user!.photoURL ?? "";
+      carregando = false;
+    });
+  }
+}
   // ✅ PERMISSÃO DA CÂMERA
   Future<bool> solicitarPermissaoCamera() async {
     final status = await Permission.camera.request();
