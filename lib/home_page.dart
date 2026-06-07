@@ -155,13 +155,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Color getStatusColor() {
-    if (status.toLowerCase().contains("stress")) {
-      return Colors.red;
-    }
-    return Colors.green;
-  }
+Color getStatusColor() {
+  switch (status.toLowerCase()) {
+    case "normal":
+      return Colors.green;
 
+    case "atencao":
+      return Colors.yellow;
+
+    case "stress":
+      return Colors.red;
+
+    default:
+      return Colors.grey;
+  }
+}
   Color getPriorityColor() {
     switch (prioridade.toLowerCase()) {
       case "alta":
