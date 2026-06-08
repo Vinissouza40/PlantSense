@@ -163,6 +163,9 @@ Color getStatusColor() {
     case "atencao":
       return Colors.yellow;
 
+    case "stress hídrico":
+      return Colors.red;
+
     case "stress":
       return Colors.red;
 

@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'firebase_options.dart';
 import 'auth_check_page.dart';
+import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -26,19 +27,19 @@ class PlantSense extends StatelessWidget {
   const PlantSense({super.key});
 
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) {
     return MaterialApp(
       title: "PlantSense",
       debugShowCheckedModeBanner: false,
       home: AnimatedSplashScreen(
-        splash: Image.asset(
-          'assets/plantsense_logo.png',
-          width: 180,
+        splash: Lottie.asset(
+          'assets/plantsense_logo_animation_lottie.json',
+          repeat: true,
         ),
-        nextScreen: const AuthCheckPage(),
+        nextScreen: const AuthCheckPage(), // Verifica se está logado
         splashIconSize: 200,
         backgroundColor: Colors.white,
-        duration: 4000,
+        duration: 6000,
         splashTransition: SplashTransition.fadeTransition,
       ),
     );
