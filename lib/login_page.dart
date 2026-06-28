@@ -225,7 +225,15 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 15),
 
                                 const SizedBox(height: 5),
-                                
+
+                                /* const Text(
+                                  "Monitoramento Inteligente",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                */
                                 const Text(
                                   "Login:",
                                   style: TextStyle(
