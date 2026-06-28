@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,7 +19,6 @@ class _PerfilPageState extends State<PerfilPage> {
 
   String nome = "Carregando...";
   String email = "Carregando...";
-  String telefone = "--";
   String fotoUrl = "";
 
   bool carregando = true;
@@ -32,76 +30,59 @@ class _PerfilPageState extends State<PerfilPage> {
   }
 
   Future<void> carregarDados() async {
-  if (user == null) {
-    setState(() {
-      carregando = false;
-    });
-    return;
-  }
-
-  try {
-    print("UID: ${user!.uid}");
-    print("Nome Google: ${user!.displayName}");
-    print("Email Google: ${user!.email}");
-    print("Foto Google: ${user!.photoURL}");
-
-    final snapshot = await FirebaseDatabase.instance
-        .ref("usuarios/${user!.uid}")
-        .get();
-
-    if (snapshot.exists && snapshot.value != null) {
-      final dados = Map<String, dynamic>.from(snapshot.value as Map);
-
+    if (user == null) {
       setState(() {
-        nome = dados["nome"]?.toString().isNotEmpty == true
-            ? dados["nome"].toString()
-            : (user!.displayName ?? "Usuário");
-
-        email = dados["email"]?.toString().isNotEmpty == true
-            ? dados["email"].toString()
-            : (user!.email ?? "");
-
-        telefone = dados["telefone"]?.toString().isNotEmpty == true
-            ? dados["telefone"].toString()
-            : "--";
-
-        fotoUrl = dados["fotoPerfil"]?.toString().isNotEmpty == true
-            ? dados["fotoPerfil"].toString()
-            : (user!.photoURL ?? "");
-
         carregando = false;
       });
-    } else {
+      return;
+    }
+
+    try {
+      final snapshot =
+          await FirebaseDatabase.instance.ref("usuarios/${user!.uid}").get();
+
+      if (snapshot.exists && snapshot.value != null) {
+        final dados = Map<String, dynamic>.from(snapshot.value as Map);
+
+        setState(() {
+          nome = dados["nome"]?.toString().isNotEmpty == true
+              ? dados["nome"].toString()
+              : (user!.displayName ?? "Usuário");
+
+          email = dados["email"]?.toString().isNotEmpty == true
+              ? dados["email"].toString()
+              : (user!.email ?? "");
+
+          fotoUrl = dados["fotoPerfil"]?.toString().isNotEmpty == true
+              ? dados["fotoPerfil"].toString()
+              : (user!.photoURL ?? "");
+
+          carregando = false;
+        });
+      } else {
+        setState(() {
+          nome = user!.displayName ?? "Usuário";
+          email = user!.email ?? "";
+          fotoUrl = user!.photoURL ?? "";
+          carregando = false;
+        });
+
+        await FirebaseDatabase.instance.ref("usuarios/${user!.uid}").set({
+          "nome": user!.displayName ?? "Usuário",
+          "email": user!.email ?? "",
+          "fotoPerfil": user!.photoURL ?? "",
+        });
+      }
+    } catch (e) {
       setState(() {
         nome = user!.displayName ?? "Usuário";
         email = user!.email ?? "";
-        telefone = "--";
         fotoUrl = user!.photoURL ?? "";
         carregando = false;
       });
-
-      await FirebaseDatabase.instance
-          .ref("usuarios/${user!.uid}")
-          .set({
-        "nome": user!.displayName ?? "Usuário",
-        "email": user!.email ?? "",
-        "telefone": "",
-        "fotoPerfil": user!.photoURL ?? "",
-      });
     }
-  } catch (e) {
-    print("Erro ao carregar perfil: $e");
-
-    setState(() {
-      nome = user!.displayName ?? "Usuário";
-      email = user!.email ?? "";
-      telefone = "--";
-      fotoUrl = user!.photoURL ?? "";
-      carregando = false;
-    });
   }
-}
-  // ✅ PERMISSÃO DA CÂMERA
+
   Future<bool> solicitarPermissaoCamera() async {
     final status = await Permission.camera.request();
 
@@ -112,33 +93,6 @@ class _PerfilPageState extends State<PerfilPage> {
     }
 
     return false;
-  }
-
-  // ✅ PERMISSÃO DA GALERIA (CORRIGIDO)
-  Future<bool> solicitarPermissaoGaleria() async {
-    if (Platform.isAndroid) {
-      final status = await Permission.storage.request();
-
-      if (status.isGranted) return true;
-
-      if (status.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    } else {
-      final status = await Permission.photos.request();
-
-      if (status.isGranted || status.isLimited) {
-        return true;
-      }
-
-      if (status.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    }
   }
 
   Future<void> selecionarFoto() async {
@@ -155,8 +109,10 @@ class _PerfilPageState extends State<PerfilPage> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.white),
-                title: const Text("Tirar Foto",
-                    style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  "Tirar Foto",
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   alterarFotoPerfil(ImageSource.camera);
@@ -164,8 +120,10 @@ class _PerfilPageState extends State<PerfilPage> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.white),
-                title: const Text("Escolher da Galeria",
-                    style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  "Escolher da Galeria",
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   alterarFotoPerfil(ImageSource.gallery);
@@ -180,17 +138,10 @@ class _PerfilPageState extends State<PerfilPage> {
 
   Future<void> alterarFotoPerfil(ImageSource source) async {
     try {
-      bool permitido = false;
-
       if (source == ImageSource.camera) {
-        permitido = await solicitarPermissaoCamera();
-      } else {
-        permitido = await solicitarPermissaoGaleria();
-      }
+        final permitido = await solicitarPermissaoCamera();
 
-      if (!permitido) {
-        print("Permissão negada");
-        return;
+        if (!permitido) return;
       }
 
       final XFile? imagem = await picker.pickImage(
@@ -199,12 +150,9 @@ class _PerfilPageState extends State<PerfilPage> {
         maxWidth: 1200,
       );
 
-      print("Imagem selecionada: ${imagem?.path}");
-
       if (imagem == null) return;
 
       final file = File(imagem.path);
-
       final caminho = "perfil/${user!.uid}.jpg";
 
       await Supabase.instance.client.storage.from("imagens").upload(
@@ -213,15 +161,10 @@ class _PerfilPageState extends State<PerfilPage> {
             fileOptions: const FileOptions(upsert: true),
           );
 
-      final imageUrl = Supabase.instance.client.storage
-          .from("imagens")
-          .getPublicUrl(caminho);
+      final imageUrl =
+          Supabase.instance.client.storage.from("imagens").getPublicUrl(caminho);
 
-      await FirebaseDatabase.instance
-          .ref()
-          .child("usuarios")
-          .child(user!.uid)
-          .update({
+      await FirebaseDatabase.instance.ref("usuarios/${user!.uid}").update({
         "fotoPerfil": imageUrl,
       });
 
@@ -235,8 +178,6 @@ class _PerfilPageState extends State<PerfilPage> {
         const SnackBar(content: Text("Foto atualizada com sucesso!")),
       );
     } catch (e) {
-      print("ERRO: $e");
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -250,14 +191,20 @@ class _PerfilPageState extends State<PerfilPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF020617),
       appBar: AppBar(
-        title: const Text("Perfil", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          "Perfil",
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF3DBE8B), Color(0xFF2E8B57)],
+              colors: [
+                Color(0xFF3DBE8B),
+                Color(0xFF2E8B57),
+              ],
             ),
           ),
         ),
@@ -283,12 +230,14 @@ class _PerfilPageState extends State<PerfilPage> {
                             CircleAvatar(
                               radius: 55,
                               backgroundColor: const Color(0xFF2E8B57),
-                              backgroundImage: fotoUrl.isNotEmpty
-                                  ? NetworkImage(fotoUrl)
-                                  : null,
+                              backgroundImage:
+                                  fotoUrl.isNotEmpty ? NetworkImage(fotoUrl) : null,
                               child: fotoUrl.isEmpty
-                                  ? const Icon(Icons.person,
-                                      size: 60, color: Colors.white)
+                                  ? const Icon(
+                                      Icons.person,
+                                      size: 60,
+                                      color: Colors.white,
+                                    )
                                   : null,
                             ),
                             Positioned(
@@ -302,32 +251,34 @@ class _PerfilPageState extends State<PerfilPage> {
                                     color: Colors.green,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.camera_alt,
-                                      color: Colors.white, size: 18),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
-                        Text(nome,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          nome,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 8),
-                        Text(email,
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 16)),
-                        const SizedBox(height: 25),
-                        const Divider(color: Colors.white24),
-                        ListTile(
-                          leading:
-                              const Icon(Icons.phone, color: Colors.green),
-                          title: const Text("Telefone",
-                              style: TextStyle(color: Colors.white70)),
-                          subtitle: Text(telefone,
-                              style: const TextStyle(color: Colors.white)),
+                        Text(
+                          email,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
