@@ -217,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ), // Ajuste o valor como desejar
                                   child: Image.asset(
                                     'assets/Icone.png',
-                                    width: 130,
+                                    width: 120,
                                     fit: BoxFit.cover,
                                   ),
                                 ),

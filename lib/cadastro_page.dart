@@ -172,9 +172,15 @@ class _CadastroPageState extends State<CadastroPage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
 
-                                Image.asset(
-                                  'assets/plantsense_logo.png',
-                                  width: 100,
+                              ClipRRect(
+                                  borderRadius: BorderRadius.circular(
+                                    20,
+                                  ), // Ajuste o valor como desejar
+                                  child: Image.asset(
+                                    'assets/Icone.png',
+                                    width: 120,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
 
                                 const SizedBox(height: 15),
