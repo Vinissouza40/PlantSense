@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "352473030604-kg5gtbv6qfg9udjd7c9ed51c8v5flvbl.apps.googleusercontent.com",
+          "client_id": "352473030604-kgpbbn3cqkd5b8e6fr3jled8rfvfd5un.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.plant_sense",
-            "certificate_hash": "9d17885bacb4a3e77230932f653366647b3790b2"
+            "certificate_hash": "ae5dbba2b29c14e4c4ad6d3c9c82d74e9844dfa4"
           }
         },
         {
